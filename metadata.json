@@ -1,0 +1,6 @@
+{
+  "name": "FabricForge AI - Minecraft Fabric Mod Studio & .jar Builder",
+  "description": "Describe any Minecraft mod idea and generate ready-to-play .jar Fabric mods for Minecraft 1.16 through 1.21.11+ with custom items, blocks, recipes, mixins, textures, and fabric.mod.json.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
