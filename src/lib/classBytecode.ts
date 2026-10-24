@@ -1,5 +1,5 @@
 /**
- * JVM Class Bytecode Synthesizer for Minecraft Fabric Mod Initializer
+ * JVM Class Bytecode Synthesizer for Minecraft Fabric Mod Initializer and Mixins
  * Generates valid binary .class files conforming to the JVM Class File specification.
  */
 
@@ -35,9 +35,6 @@ class ByteWriter {
 
 /**
  * Generates a valid JVM .class file for a Fabric ModInitializer
- * @param packageName e.g. "net.fabricmc.example"
- * @param className e.g. "ExampleMod"
- * @param javaVersion target Java version (8, 16, 17, 21)
  */
 export function generateModInitializerBytecode(
   packageName: string,
@@ -48,11 +45,6 @@ export function generateModInitializerBytecode(
   const thisClassPath = `${internalPackage}/${className}`;
   const sourceFileName = `${className}.java`;
 
-  // Java major version mappings:
-  // Java 8 = 52 (0x34)
-  // Java 16 = 60 (0x3C)
-  // Java 17 = 61 (0x3D)
-  // Java 21 = 65 (0x41)
   let majorVersion = 61;
   if (javaVersion <= 8) majorVersion = 52;
   else if (javaVersion <= 16) majorVersion = 60;
@@ -61,28 +53,9 @@ export function generateModInitializerBytecode(
 
   const w = new ByteWriter();
 
-  // 1. Magic
   w.u4(0xCAFEBABE);
-  // 2. Minor version
   w.u2(0);
-  // 3. Major version
   w.u2(majorVersion);
-
-  // Constant Pool definitions:
-  // 1: Methodref -> class: #2 (Object), name_and_type: #3 (<init>:()V)
-  // 2: Class -> #6 ("java/lang/Object")
-  // 3: NameAndType -> name: #7 ("<init>"), descriptor: #8 ("()V")
-  // 4: Class -> #9 ("net/fabricmc/api/ModInitializer")
-  // 5: Class -> #10 (thisClassPath)
-  // 6: Utf8 -> "java/lang/Object"
-  // 7: Utf8 -> "<init>"
-  // 8: Utf8 -> "()V"
-  // 9: Utf8 -> "net/fabricmc/api/ModInitializer"
-  // 10: Utf8 -> thisClassPath
-  // 11: Utf8 -> "Code"
-  // 12: Utf8 -> "onInitialize"
-  // 13: Utf8 -> "SourceFile"
-  // 14: Utf8 -> sourceFileName
 
   const utf8Encode = (str: string): number[] => {
     const encoder = new TextEncoder();
@@ -90,138 +63,138 @@ export function generateModInitializerBytecode(
     return [(encoded.length >> 8) & 0xFF, encoded.length & 0xFF, ...encoded];
   };
 
-  const constantPoolCount = 15; // 1 to 14
+  const constantPoolCount = 15;
   w.u2(constantPoolCount);
 
   // #1 Methodref: class #2, name_and_type #3
-  w.u1(10); // CONSTANT_Methodref
-  w.u2(2);
-  w.u2(3);
-
+  w.u1(10); w.u2(2); w.u2(3);
   // #2 Class: #6
-  w.u1(7); // CONSTANT_Class
-  w.u2(6);
-
+  w.u1(7); w.u2(6);
   // #3 NameAndType: name #7, descriptor #8
-  w.u1(12); // CONSTANT_NameAndType
-  w.u2(7);
-  w.u2(8);
-
+  w.u1(12); w.u2(7); w.u2(8);
   // #4 Class: #9
-  w.u1(7); // CONSTANT_Class
-  w.u2(9);
-
+  w.u1(7); w.u2(9);
   // #5 Class: #10
-  w.u1(7); // CONSTANT_Class
-  w.u2(10);
-
+  w.u1(7); w.u2(10);
   // #6 Utf8: "java/lang/Object"
-  w.u1(1);
-  w.bytes(utf8Encode("java/lang/Object"));
-
+  w.u1(1); w.bytes(utf8Encode("java/lang/Object"));
   // #7 Utf8: "<init>"
-  w.u1(1);
-  w.bytes(utf8Encode("<init>"));
-
+  w.u1(1); w.bytes(utf8Encode("<init>"));
   // #8 Utf8: "()V"
-  w.u1(1);
-  w.bytes(utf8Encode("()V"));
-
+  w.u1(1); w.bytes(utf8Encode("()V"));
   // #9 Utf8: "net/fabricmc/api/ModInitializer"
-  w.u1(1);
-  w.bytes(utf8Encode("net/fabricmc/api/ModInitializer"));
-
+  w.u1(1); w.bytes(utf8Encode("net/fabricmc/api/ModInitializer"));
   // #10 Utf8: thisClassPath
-  w.u1(1);
-  w.bytes(utf8Encode(thisClassPath));
-
+  w.u1(1); w.bytes(utf8Encode(thisClassPath));
   // #11 Utf8: "Code"
-  w.u1(1);
-  w.bytes(utf8Encode("Code"));
-
+  w.u1(1); w.bytes(utf8Encode("Code"));
   // #12 Utf8: "onInitialize"
-  w.u1(1);
-  w.bytes(utf8Encode("onInitialize"));
-
+  w.u1(1); w.bytes(utf8Encode("onInitialize"));
   // #13 Utf8: "SourceFile"
-  w.u1(1);
-  w.bytes(utf8Encode("SourceFile"));
-
+  w.u1(1); w.bytes(utf8Encode("SourceFile"));
   // #14 Utf8: sourceFileName
-  w.u1(1);
-  w.bytes(utf8Encode(sourceFileName));
+  w.u1(1); w.bytes(utf8Encode(sourceFileName));
 
-  // Access flags: ACC_PUBLIC (0x0001) | ACC_SUPER (0x0020)
-  w.u2(0x0021);
+  w.u2(0x0021); // ACC_PUBLIC | ACC_SUPER
+  w.u2(5);      // this_class
+  w.u2(2);      // super_class
+  w.u2(1);      // interfaces_count
+  w.u2(4);      // interface #4 (ModInitializer)
+  w.u2(0);      // fields_count
+  w.u2(2);      // methods_count
 
-  // This class: #5
-  w.u2(5);
+  // Method 1: <init>
+  w.u2(0x0001); w.u2(7); w.u2(8); w.u2(1);
+  w.u2(11); w.u4(17); w.u2(1); w.u2(1); w.u4(5);
+  w.u1(0x2A); w.u1(0xB7); w.u2(1); w.u1(0xB1);
+  w.u2(0); w.u2(0);
 
-  // Super class: #2 (java/lang/Object)
-  w.u2(2);
+  // Method 2: onInitialize
+  w.u2(0x0001); w.u2(12); w.u2(8); w.u2(1);
+  w.u2(11); w.u4(13); w.u2(0); w.u2(1); w.u4(1);
+  w.u1(0xB1); w.u2(0); w.u2(0);
 
-  // Interfaces count: 1 (net/fabricmc/api/ModInitializer)
+  // Attributes count: 1 (SourceFile)
   w.u2(1);
-  w.u2(4);
+  w.u2(13); w.u4(2); w.u2(14);
 
-  // Fields count: 0
+  return w.toUint8Array();
+}
+
+/**
+ * Generates a valid JVM .class file for a Fabric Mixin class
+ */
+export function generateMixinClassBytecode(
+  packageName: string,
+  mixinName: string,
+  javaVersion: number = 17
+): Uint8Array {
+  const internalPackage = packageName.replace(/\./g, '/');
+  const thisClassPath = `${internalPackage}/mixin/${mixinName}`;
+  const sourceFileName = `${mixinName}.java`;
+
+  let majorVersion = 61;
+  if (javaVersion <= 8) majorVersion = 52;
+  else if (javaVersion <= 16) majorVersion = 60;
+  else if (javaVersion <= 17) majorVersion = 61;
+  else if (javaVersion >= 21) majorVersion = 65;
+
+  const w = new ByteWriter();
+
+  w.u4(0xCAFEBABE);
   w.u2(0);
+  w.u2(majorVersion);
 
-  // Methods count: 2 (<init> and onInitialize)
-  w.u2(2);
+  const utf8Encode = (str: string): number[] => {
+    const encoder = new TextEncoder();
+    const encoded = Array.from(encoder.encode(str));
+    return [(encoded.length >> 8) & 0xFF, encoded.length & 0xFF, ...encoded];
+  };
 
-  // Method 1: public <init>()V
-  {
-    w.u2(0x0001); // ACC_PUBLIC
-    w.u2(7);      // name: <init>
-    w.u2(8);      // descriptor: ()V
-    w.u2(1);      // attributes count: 1 (Code)
+  const constantPoolCount = 13;
+  w.u2(constantPoolCount);
 
-    // Code attribute:
-    w.u2(11); // attribute_name_index: "Code"
-    // attribute_length: 2 (max_stack) + 2 (max_locals) + 4 (code_len) + 5 (code) + 2 (exception_table_length) + 2 (attributes_count) = 17
-    w.u4(17);
-    w.u2(1); // max_stack = 1
-    w.u2(1); // max_locals = 1
-    w.u4(5); // code_length = 5
-    // Code instructions:
-    // 0: aload_0 (0x2A)
-    // 1: invokespecial #1 (0xB7, 0x00, 0x01)
-    // 4: return (0xB1)
-    w.u1(0x2A);
-    w.u1(0xB7);
-    w.u2(1);
-    w.u1(0xB1);
-    w.u2(0); // exception_table_length = 0
-    w.u2(0); // attributes_count = 0
-  }
+  // #1 Methodref: class #2, name_and_type #3
+  w.u1(10); w.u2(2); w.u2(3);
+  // #2 Class: #5
+  w.u1(7); w.u2(5);
+  // #3 NameAndType: name #6, descriptor #7
+  w.u1(12); w.u2(6); w.u2(7);
+  // #4 Class: #8
+  w.u1(7); w.u2(8);
+  // #5 Utf8: "java/lang/Object"
+  w.u1(1); w.bytes(utf8Encode("java/lang/Object"));
+  // #6 Utf8: "<init>"
+  w.u1(1); w.bytes(utf8Encode("<init>"));
+  // #7 Utf8: "()V"
+  w.u1(1); w.bytes(utf8Encode("()V"));
+  // #8 Utf8: thisClassPath
+  w.u1(1); w.bytes(utf8Encode(thisClassPath));
+  // #9 Utf8: "Code"
+  w.u1(1); w.bytes(utf8Encode("Code"));
+  // #10 Utf8: "SourceFile"
+  w.u1(1); w.bytes(utf8Encode("SourceFile"));
+  // #11 Utf8: sourceFileName
+  w.u1(1); w.bytes(utf8Encode(sourceFileName));
+  // #12 (reserved or unused filler)
+  w.u1(1); w.bytes(utf8Encode("mixin"));
 
-  // Method 2: public onInitialize()V
-  {
-    w.u2(0x0001); // ACC_PUBLIC
-    w.u2(12);     // name: onInitialize
-    w.u2(8);      // descriptor: ()V
-    w.u2(1);      // attributes count: 1 (Code)
+  w.u2(0x0021); // ACC_PUBLIC | ACC_SUPER
+  w.u2(4);      // this_class (#4)
+  w.u2(2);      // super_class (#2 - java/lang/Object)
+  w.u2(0);      // interfaces_count
+  w.u2(0);      // fields_count
+  w.u2(1);      // methods_count (<init>)
 
-    // Code attribute:
-    w.u2(11); // attribute_name_index: "Code"
-    // attribute_length: 2 + 2 + 4 + 1 + 2 + 2 = 13
-    w.u4(13);
-    w.u2(0); // max_stack = 0
-    w.u2(1); // max_locals = 1
-    w.u4(1); // code_length = 1
-    // Code instructions:
-    // 0: return (0xB1)
-    w.u1(0xB1);
-    w.u2(0); // exception_table_length = 0
-    w.u2(0); // attributes_count = 0
-  }
+  // Method 1: <init>
+  w.u2(0x0001); w.u2(6); w.u2(7); w.u2(1);
+  w.u2(9); w.u4(17); w.u2(1); w.u2(1); w.u4(5);
+  w.u1(0x2A); w.u1(0xB7); w.u2(1); w.u1(0xB1);
+  w.u2(0); w.u2(0);
 
-  // Class Attributes count: 1 (SourceFile)
+  // Attributes count: 1 (SourceFile)
   w.u2(1);
-  w.u2(13); // attribute_name_index: "SourceFile"
-  w.u4(2);  // attribute_length = 2
-  w.u2(14); // sourcefile_index: #14
+  w.u2(10); w.u4(2); w.u2(11);
 
   return w.toUint8Array();
 }

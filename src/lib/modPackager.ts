@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { generateModInitializerBytecode } from './classBytecode.ts';
+import { generateModInitializerBytecode, generateMixinClassBytecode } from './classBytecode.ts';
 import {
   PixelArtGrid,
   pixelGridToPngBytes,
@@ -342,9 +342,13 @@ export function listJarFiles(mod: ModProject): JarFileEntry[] {
     });
   }
 
-  // Mixin sources
+  // Mixin sources & compiled .class bytecode
   if (mod.mixins) {
     for (const mixin of mod.mixins) {
+      entries.push({
+        path: `${classInternalPath}/mixin/${mixin.name}.class`,
+        type: 'binary',
+      });
       entries.push({
         path: `src/main/java/${classInternalPath}/mixin/${mixin.name}.java`,
         type: 'java',
@@ -470,6 +474,8 @@ export async function buildFabricModJar(mod: ModProject): Promise<Blob> {
 
   if (mod.mixins) {
     for (const mixin of mod.mixins) {
+      const mixinClassBytes = generateMixinClassBytecode(mod.packageName, mixin.name, mod.javaVersion);
+      zip.file(`${classInternalPath}/mixin/${mixin.name}.class`, mixinClassBytes);
       zip.file(`src/main/java/${classInternalPath}/mixin/${mixin.name}.java`, mixin.javaCode);
     }
   }
